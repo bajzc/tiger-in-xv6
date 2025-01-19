@@ -117,9 +117,9 @@ mkfs/mkfs: mkfs/mkfs.c $K/fs.h $K/param.h
 	gcc -Werror -Wall -I. -o mkfs/mkfs mkfs/mkfs.c
 
 $U/tiger.S:
-	cd tiger-in-c
-	make
-	cd ..
+	make -C tiger-in-c
+	tiger-in-c/a.out tiger-in-c/test.tig
+	cp tiger-in-c/test.tig.s user/tiger.s
 
 
 $U/_runtime: $U/runtime.c $(ULIB) $U/tiger.S
