@@ -1,0 +1,3 @@
+[submodule "tiger-in-c"]
+	path = tiger-in-c
+	url = https://github.com/bajzc/tiger-in-c.git

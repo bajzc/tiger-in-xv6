@@ -116,6 +116,12 @@ $U/_forktest: $U/forktest.o $(ULIB)
 mkfs/mkfs: mkfs/mkfs.c $K/fs.h $K/param.h
 	gcc -Werror -Wall -I. -o mkfs/mkfs mkfs/mkfs.c
 
+$U/tiger.S:
+	cd tiger-in-c
+	make
+	cd ..
+
+
 $U/_runtime: $U/runtime.c $(ULIB) $U/tiger.S
 	$(CC) $(CFLAGS) -c $U/tiger.s -o $U/tiger.o
 	$(CC) $(CFLAGS) -I. -Ikernel -c -o $U/runtime.o $U/runtime.c
