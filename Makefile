@@ -121,7 +121,6 @@ $U/tiger.S:
 	tiger-in-c/a.out tiger-in-c/test.tig
 	cp tiger-in-c/test.tig.s user/tiger.s
 
-
 $U/_runtime: $U/runtime.c $(ULIB) $U/tiger.S
 	$(CC) $(CFLAGS) -c $U/tiger.s -o $U/tiger.o
 	$(CC) $(CFLAGS) -I. -Ikernel -c -o $U/runtime.o $U/runtime.c
@@ -130,6 +129,12 @@ $U/_runtime: $U/runtime.c $(ULIB) $U/tiger.S
 	$(LD) $(LDFLAGS) -T $U/user.ld -o $U/_runtime $U/runtime.o $U/tiger.o $(ULIB)
 	$(OBJDUMP) -S $U/_runtime > $U/runtime.asm
 	# $(OBJCOPY) -S -O binary $U/_runtime.out $U/_runtime
+
+$U/_tigerc: $(ULIB)
+	make -C tiger-in-c clean
+	make -C tiger-in-c objs CC="$(CC)" CFLAGS="$(CFLAGS) -I$(shell pwd) -O0 -D DEBUG=1 -D DEBUG2=1 -D XV6=1 -Wno-error"
+	$(LD) $(LDFLAGS) -T $U/user.ld -o $U/_tigerc $(ULIB) tiger-in-c/out/*.o
+	$(OBJDUMP) -S $U/_tigerc > $U/tiger.asm
 
 # Prevent deletion of intermediate files, e.g. cat.o, after first build, so
 # that disk image changes after first build are persistent until clean.  More
@@ -155,9 +160,10 @@ UPROGS=\
 	$U/_wc\
 	$U/_zombie\
 	$U/_runtime\
+	$U/_tigerc\
 
 fs.img: mkfs/mkfs README $(UPROGS)
-	mkfs/mkfs fs.img README $(UPROGS)
+	mkfs/mkfs fs.img README test.tig $(UPROGS)
 
 -include kernel/*.d user/*.d
 
@@ -168,6 +174,8 @@ clean:
 	mkfs/mkfs .gdbinit \
         $U/usys.S \
 	$(UPROGS)
+	make -C tiger-in-c clean
+	rm -f $U/tiger.s
 
 # try to generate a unique GDB port
 GDBPORT = $(shell expr `id -u` % 5000 + 25000)
@@ -179,7 +187,7 @@ ifndef CPUS
 CPUS := 3
 endif
 
-QEMUOPTS = -machine virt -bios none -kernel $K/kernel -m 128M -smp $(CPUS) -nographic
+QEMUOPTS = -machine virt -bios none -kernel $K/kernel -m 512M -smp $(CPUS) -nographic
 QEMUOPTS += -global virtio-mmio.force-legacy=false
 QEMUOPTS += -drive file=fs.img,if=none,format=raw,id=x0
 QEMUOPTS += -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0
