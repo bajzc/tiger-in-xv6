@@ -117,9 +117,9 @@ mkfs/mkfs: mkfs/mkfs.c $K/fs.h $K/param.h
 	gcc -Werror -Wall -I. -o mkfs/mkfs mkfs/mkfs.c
 
 $U/tiger.S:
-	make -C tiger-in-c
-	tiger-in-c/a.out tiger-in-c/test.tig
-	cp tiger-in-c/test.tig.s user/tiger.s
+	make -C tiger-in-c -j4
+	tiger-in-c/a.out ./test.tig
+	cp ./test.tig.s user/tiger.s
 
 $U/_runtime: $U/runtime.c $(ULIB) $U/tiger.S
 	$(CC) $(CFLAGS) -c $U/tiger.s -o $U/tiger.o
@@ -132,7 +132,7 @@ $U/_runtime: $U/runtime.c $(ULIB) $U/tiger.S
 
 $U/_tigerc: $(ULIB)
 	make -C tiger-in-c clean
-	make -C tiger-in-c objs CC="$(CC)" CFLAGS="$(CFLAGS) -I$(shell pwd) -O0 -D DEBUG=1 -D DEBUG2=1 -D XV6=1 -Wno-error"
+	make -C tiger-in-c -j4 objs CC="$(CC)" CFLAGS="$(CFLAGS) -I../ -O0 -D DEBUG=1 -D DEBUG2=1 -D XV6=1 -Wno-error"
 	$(LD) $(LDFLAGS) -T $U/user.ld -o $U/_tigerc $(ULIB) tiger-in-c/out/*.o
 	$(OBJDUMP) -S $U/_tigerc > $U/tiger.asm
 
