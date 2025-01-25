@@ -39,7 +39,7 @@ int stringEqual(struct string *s, struct string *t) {
   return 1;
 }
 
-void printInt(int a) { printf("%d\n", a); }
+void printInt(int a) { printf("%d", a); }
 
 void print(struct string *s) { printf("%s", s->chars); }
 

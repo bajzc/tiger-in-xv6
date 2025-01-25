@@ -11,7 +11,7 @@ r = Runner(save("xv6.out"))
 @test(0, "queen")
 def test_queen():
     server = subprocess.Popen(["make"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    r.run_qemu(shell_script(["runtime"]), timeout=5)
+    r.run_qemu(shell_script(["runtime", "echo OK"]), timeout=5)
     server.terminate()
     server.communicate()
 
@@ -19,6 +19,7 @@ def test_queen():
 @test(10, "queen - started", parent=test_queen)
 def test_nettest_():
     r.match("^call tiger here$")
+    r.match("^OK$")
 
 
 @test(90, "queen - some correct graphs printed", parent=test_queen)
@@ -33,16 +34,33 @@ def test_nettest_():
 @test(0, "merge")
 def test_merge():
   server = subprocess.Popen(["make"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-  r.run_qemu(shell_script(["cat mergetest.data | runtime"]), timeout=2)
+  r.run_qemu(shell_script(["cat mergetest.data | runtime", "echo OK"]), timeout=5)
   server.terminate()
   server.communicate()
 
 @test(10, "merge - started", parent=test_merge)
 def test_merge_():
     r.match("^call tiger here$")
+    r.match("^OK$")
 
 @test(90, "merge - correct merged list", parent=test_merge)
 def test_merge_():
   r.match("^1 2 3 4 4 5 19 20 $")
+
+@test(0, "qsort")
+def test_qsort():
+  server = subprocess.Popen(["make"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+  r.run_qemu(shell_script(["runtime", "echo OK"]), timeout=5)
+  server.terminate()
+  server.communicate()
+
+@test(10, "qsort - started", parent=test_qsort)
+def test_qsort_():
+    r.match("^call tiger here$")
+    r.match("^OK$")
+
+@test(90, "qsort - correct sorted list", parent=test_qsort)
+def test_qsort_():
+  r.match("^1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 $")
 
 run_tests()

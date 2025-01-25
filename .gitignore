@@ -17,3 +17,5 @@ user/usys.S
 .gdbinit
 .ccls*
 xv6.out
+*.s
+.gdb*
