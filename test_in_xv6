@@ -1,0 +1,48 @@
+#!/usr/bin/env python
+
+import re
+import subprocess
+import sys
+from testlib import *
+
+r = Runner(save("xv6.out"))
+
+
+@test(0, "queen")
+def test_queen():
+    server = subprocess.Popen(["make"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    r.run_qemu(shell_script(["runtime"]), timeout=5)
+    server.terminate()
+    server.communicate()
+
+
+@test(10, "queen - started", parent=test_queen)
+def test_nettest_():
+    r.match("^call tiger here$")
+
+
+@test(90, "queen - some correct graphs printed", parent=test_queen)
+def test_nettest_():
+    r.match(
+        "^ O . . . . . . . . . . . O . . . . . . . . . . O . . . . . O . . . . O . . . . . . . . . . . O . . O . . . . . . . . . O . . . .$"
+    )
+    r.match(
+      "^ . . . . . . . O . . . O . . . . O . . . . . . . . . O . . . . . . . . . . O . . . O . . . . . . . . . . . . O . . . . . O . . .$"
+    )
+
+@test(0, "merge")
+def test_merge():
+  server = subprocess.Popen(["make"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+  r.run_qemu(shell_script(["cat mergetest.data | runtime"]), timeout=2)
+  server.terminate()
+  server.communicate()
+
+@test(10, "merge - started", parent=test_merge)
+def test_merge_():
+    r.match("^call tiger here$")
+
+@test(90, "merge - correct merged list", parent=test_merge)
+def test_merge_():
+  r.match("^1 2 3 4 4 5 19 20 $")
+
+run_tests()

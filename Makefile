@@ -116,11 +116,9 @@ $U/_forktest: $U/forktest.o $(ULIB)
 mkfs/mkfs: mkfs/mkfs.c $K/fs.h $K/param.h
 	gcc -Werror -Wall -I. -o mkfs/mkfs mkfs/mkfs.c
 
-$U/_runtime: $U/runtime.c $(ULIB) $U/tiger.S
+$U/_runtime: $U/runtime.c $(ULIB) $U/tiger.s
 	$(CC) $(CFLAGS) -c $U/tiger.s -o $U/tiger.o
 	$(CC) $(CFLAGS) -I. -Ikernel -c -o $U/runtime.o $U/runtime.c
-	# $(LD) $(LDFLAGS) -N -Ttext 0 -o $U/tiger.out $U/tiger.o
-	# $(OBJCOPY) -S -O binary $U/tiger.out $U/tiger
 	$(LD) $(LDFLAGS) -T $U/user.ld -o $U/_runtime $U/runtime.o $U/tiger.o $(ULIB)
 	$(OBJDUMP) -S $U/_runtime > $U/runtime.asm
 	# $(OBJCOPY) -S -O binary $U/_runtime.out $U/_runtime
@@ -150,8 +148,11 @@ UPROGS=\
 	$U/_zombie\
 	$U/_runtime\
 
-fs.img: mkfs/mkfs README $(UPROGS)
-	mkfs/mkfs fs.img README $(UPROGS)
+TESTDATA=\
+	$U/mergetest.data
+
+fs.img: mkfs/mkfs README $(UPROGS) $(TESTDATA)
+	mkfs/mkfs fs.img README $(UPROGS) $(TESTDATA)
 
 -include kernel/*.d user/*.d
 
@@ -188,3 +189,5 @@ qemu-gdb: $K/kernel .gdbinit fs.img
 	@echo "*** Now run 'gdb' in another window." 1>&2
 	$(QEMU) $(QEMUOPTS) -S $(QEMUGDB)
 
+print-gdbport:
+	@echo $(GDBPORT)
