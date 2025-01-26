@@ -1,7 +1,13 @@
 #include "kernel/types.h"
 #include "user/user.h"
-
+#define UINT_MAX 4294967295L
+#define stderr 2
 extern void _start();
+
+struct string {
+  int length;
+  unsigned char chars[1];
+};
 
 int *initArray(int size, int init) {
   int i;
@@ -13,19 +19,20 @@ int *initArray(int size, int init) {
   return a;
 }
 
-int *initRecord(int size) {
+int *initRecord(struct string *s) {
   int i;
   int *p, *a;
-  p = a = (int *)malloc(size);
-  for (i = 0; i < size; i += sizeof(int))
+  p = a = (int *)malloc(sizeof(int)*(s->length + 1));
+  // int is 32-bit
+  if((uint64)s->chars >= UINT_MAX){
+    fprintf(stderr , "initRecord: UINT_MAX exceeded\n");
+    exit(1);
+  }
+  *p++ = (uint32)((uint64)s->chars & 0xFFFFFFFF);
+  for (i = 1; i <= s->length; i += sizeof(int))
     *p++ = 0;
   return a;
 }
-
-struct string {
-  int length;
-  unsigned char chars[1];
-};
 
 int stringEqual(struct string *s, struct string *t) {
   int i;
