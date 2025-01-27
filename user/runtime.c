@@ -9,13 +9,27 @@ struct string {
   unsigned char chars[1];
 };
 
-int *initArray(int size, int init) {
+/*
+array discriptor: 31th bit: is_pointer?
+                  0-30th bits: size of array
+ */
+int *initArray(int size, int init, int is_pointer) {
   int i;
-  printf("initArray: size: %d, init: %d\n", size, init);
-  int *a = (int *)malloc(size * sizeof(int));
-  for (i = 0; i < size; i++)
+  fprintf(stderr, ">initArray: size: %d, init: %d, is_pointer: %d\n", size, init, is_pointer);
+  int *a = (int *)malloc((size+1) * sizeof(int));
+  if(size >= UINT_MAX / 2) {
+    fprintf(stderr, ">initArray: size %d is crazy large!\n", size);
+    exit(1);
+  }
+  a[0] = (is_pointer & 0x1) << 31 | (size & UINT_MAX);
+  fprintf(stderr, ">initArray: a[0]: %x\n", a[0]);
+  if((uint64)a >= UINT_MAX) {
+    fprintf(stderr, "initArray: UINT_MAX exceeded\n");
+    exit(1);
+  }
+  for (i = 1; i <= size; i++)
     a[i] = init;
-  printf("initArray: alloced memory from %p to %p\n", a, &a[size - 1]);
+  fprintf(stderr, ">initArray: alloced memory from %p to %p\n", a, &a[size]);
   return a;
 }
 
@@ -24,13 +38,15 @@ int *initRecord(struct string *s) {
   int *p, *a;
   p = a = (int *)malloc(sizeof(int)*(s->length + 1));
   // int is 32-bit
-  if((uint64)s->chars >= UINT_MAX){
+  if((uint64)s->chars >= UINT_MAX || (uint64)p >= UINT_MAX){
     fprintf(stderr , "initRecord: UINT_MAX exceeded\n");
     exit(1);
   }
   *p++ = (uint32)((uint64)s->chars & 0xFFFFFFFF);
+  fprintf(stderr, ">InitRecord: record descriptor: %s\n", s->chars);
   for (i = 1; i <= s->length; i += sizeof(int))
     *p++ = 0;
+  fprintf(stderr, "initRecord: allocated memory from %p to %p\n", a, p);
   return a;
 }
 
@@ -81,19 +97,28 @@ struct string *chr(int i) {
 
 int size(struct string *s) { return s->length; }
 
+/* conflict definition with the book reference:
+  @first: the starting character
+ */
 struct string *substring(struct string *s, int first, int n) {
-  if (first < 0 || first + n > s->length) {
-    printf("substring([%d],%d,%d) out of range\n", s->length, first, n);
+  unsigned char *p = s->chars;
+  while(p - s->chars < s->length){
+    if(*p == first)
+      break;
+    p++;
+  }
+  if (n < 0 || p - s->chars + n > s->length) {
+    fprintf(stderr, ">substring([%d],%d,%d) out of range\n", s->length, first, n);
     exit(1);
   }
   if (n == 1)
-    return consts + s->chars[first];
+    return consts + first;
   {
     struct string *t = (struct string *)malloc(sizeof(int) + n);
     int i;
     t->length = n;
     for (i = 0; i < n; i++)
-      t->chars[i] = s->chars[first + i];
+      t->chars[i] = *p++;
     return t;
   }
 }
@@ -134,13 +159,13 @@ int main() {
     consts[i].length = 1;
     consts[i].chars[0] = i;
   }
-  printf("call tiger here\n");
+  fprintf(stderr, ">call tiger here\n");
   uint64 fp, sp;
-  asm volatile("mv %0, s0" : "=r"(fp));
+  asm volatile("mv %0, fp" : "=r"(fp));
   asm volatile("mv %0, sp" : "=r"(sp));
-  printf(">before fp: %lx sp: %lx\n", fp, sp);
+  fprintf(stderr, ">before fp: %lx sp: %lx\n", fp, sp);
   _start();
-  printf(">after fp: %lx sp: %lx\n", fp, sp);
+  fprintf(stderr, ">after fp: %lx sp: %lx\n", fp, sp);
   return 3;
 }
 
