@@ -120,6 +120,7 @@ $U/_runtime: $U/runtime.c $(ULIB) $U/tiger.s
 	$(CC) $(CFLAGS) -c $U/tiger.s -o $U/tiger.o
 	$(CC) $(CFLAGS) -I. -Ikernel -c -o $U/runtime.o $U/runtime.c
 	$(LD) $(LDFLAGS) -T $U/user.ld -o $U/_runtime $U/runtime.o $U/tiger.o $(ULIB)
+	$(OBJDUMP) -S -s -j .data $U/_runtime > $U/runtime_data.asm
 	$(OBJDUMP) -S $U/_runtime > $U/runtime.asm
 	# $(OBJCOPY) -S -O binary $U/_runtime.out $U/_runtime
 

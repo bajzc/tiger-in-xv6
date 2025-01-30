@@ -9,22 +9,41 @@ struct string {
   unsigned char chars[1];
 };
 
-/*
-array discriptor: 31th bit: is_pointer?
-                  0-30th bits: size of array
- */
-int *initArray(int size, int init, int is_pointer) {
-  int i;
-  fprintf(stderr, ">initArray: size: %d, init: %d, is_pointer: %d\n", size, init, is_pointer);
-  int *a = (int *)malloc((size+1) * sizeof(int));
-  if(size >= UINT_MAX / 2) {
-    fprintf(stderr, ">initArray: size %d is crazy large!\n", size);
-    exit(1);
+void GC_info(uint64 map_ptr) {
+  uint32 *ptrMap;
+  ptrMap = (uint32 *) map_ptr;
+  uint32 regNum, inStackNum;
+  uint32 *frame;
+  fprintf(stderr, "----------\n");
+  fprintf(stderr, ">fp: 0x%x\n", ptrMap[0]);
+  frame = (uint32 *) (uint64) ptrMap[0];
+  fprintf(stderr, ">L_prev: 0x%x\n", ptrMap[1]);
+  fprintf(stderr, ">key: %d\n", ptrMap[2]);
+  fprintf(stderr, ">regNum: %d\n", ptrMap[3]);
+  regNum = ptrMap[3];
+  for (int i = 0; i < ptrMap[3]; i++) {
+    fprintf(stderr, ">reg[%d]: 0x%x\n", i, ptrMap[i + 4]);
   }
-  a[0] = (is_pointer & 0x1) << 31 | (size & UINT_MAX);
-  fprintf(stderr, ">initArray: a[0]: %x\n", a[0]);
-  if((uint64)a >= UINT_MAX) {
-    fprintf(stderr, "initArray: UINT_MAX exceeded\n");
+  fprintf(stderr, ">stackPointerNum: %d\n", ptrMap[4 + regNum]);
+  inStackNum = ptrMap[4 + regNum];
+  for (int i = 0; i < inStackNum; i++) {
+    fprintf(stderr, ">frame[-%d]: 0x%x\n", ptrMap[4 + regNum + 1 + i],
+            *(frame - ptrMap[4 + regNum + 1 + i]));
+  }
+  fprintf(stderr, "----------\n");
+}
+
+int *initArray(int size, int init, struct string *s, uint32 ptrMap) {
+  int i;
+  GC_info(ptrMap);
+  fprintf(stderr, ">initArray: size: %d, init: 0x%x, descriptor: %s\n", size,
+          init, s->chars);
+  int *a = (int *) malloc((size + 1) * sizeof(int));
+  s->length = size;
+  a[0] = (uint64) s;
+  fprintf(stderr, ">initArray: a[0]: 0x%x\n", a[0]);
+  if ((uint64) a >= UINT_MAX) {
+    fprintf(stderr, ">initArray: UINT_MAX exceeded\n");
     exit(1);
   }
   for (i = 1; i <= size; i++)
@@ -33,20 +52,21 @@ int *initArray(int size, int init, int is_pointer) {
   return a;
 }
 
-int *initRecord(struct string *s) {
+int *initRecord(struct string *s, uint32 ptrMap) {
   int i;
   int *p, *a;
-  p = a = (int *)malloc(sizeof(int)*(s->length + 1));
+  GC_info(ptrMap);
+  p = a = (int *) malloc(sizeof(int) * (s->length + 1));
   // int is 32-bit
-  if((uint64)s->chars >= UINT_MAX || (uint64)p >= UINT_MAX){
-    fprintf(stderr , "initRecord: UINT_MAX exceeded\n");
+  if ((uint64) s->chars >= UINT_MAX || (uint64) p >= UINT_MAX) {
+    fprintf(stderr, ">initRecord: UINT_MAX exceeded\n");
     exit(1);
   }
-  *p++ = (uint32)((uint64)s->chars & 0xFFFFFFFF);
+  *p++ = (uint64) s->chars;
   fprintf(stderr, ">InitRecord: record descriptor: %s\n", s->chars);
   for (i = 1; i <= s->length; i += sizeof(int))
     *p++ = 0;
-  fprintf(stderr, "initRecord: allocated memory from %p to %p\n", a, p);
+  fprintf(stderr, ">initRecord: allocated memory from %p to %p\n", a, p);
   return a;
 }
 
@@ -102,19 +122,20 @@ int size(struct string *s) { return s->length; }
  */
 struct string *substring(struct string *s, int first, int n) {
   unsigned char *p = s->chars;
-  while(p - s->chars < s->length){
-    if(*p == first)
+  while (p - s->chars < s->length) {
+    if (*p == first)
       break;
     p++;
   }
   if (n < 0 || p - s->chars + n > s->length) {
-    fprintf(stderr, ">substring([%d],%d,%d) out of range\n", s->length, first, n);
+    fprintf(stderr, ">substring([%d],%d,%d) out of range\n", s->length, first,
+            n);
     exit(1);
   }
   if (n == 1)
     return consts + first;
   {
-    struct string *t = (struct string *)malloc(sizeof(int) + n);
+    struct string *t = (struct string *) malloc(sizeof(int) + n);
     int i;
     t->length = n;
     for (i = 0; i < n; i++)
@@ -130,7 +151,7 @@ struct string *concat(struct string *a, struct string *b) {
     return a;
   else {
     int i, n = a->length + b->length;
-    struct string *t = (struct string *)malloc(sizeof(int) + n);
+    struct string *t = (struct string *) malloc(sizeof(int) + n);
     t->length = n;
     for (i = 0; i < a->length; i++)
       t->chars[i] = a->chars[i];
@@ -168,4 +189,3 @@ int main() {
   fprintf(stderr, ">after fp: %lx sp: %lx\n", fp, sp);
   return 3;
 }
-
