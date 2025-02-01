@@ -19,3 +19,4 @@ user/usys.S
 xv6.out
 *.s
 .gdb*
+compile*

@@ -1,54 +1,25 @@
 #include "kernel/types.h"
 #include "user/user.h"
+
+#include "user/tiger/tiger_gc.h"
+#include "user/tiger/util.h"
+
 #define UINT_MAX 4294967295L
 #define stderr 2
 extern void _start();
 
-struct string {
-  int length;
-  unsigned char chars[1];
-};
-
-void GC_info(uint64 map_ptr) {
-  uint32 *ptrMap;
-  ptrMap = (uint32 *) map_ptr;
-  uint32 regNum, inStackNum;
-  uint32 *frame;
-  fprintf(stderr, "----------\n");
-  fprintf(stderr, ">fp: 0x%x\n", ptrMap[0]);
-  frame = (uint32 *) (uint64) ptrMap[0];
-  fprintf(stderr, ">L_prev: 0x%x\n", ptrMap[1]);
-  fprintf(stderr, ">key: %d\n", ptrMap[2]);
-  fprintf(stderr, ">regNum: %d\n", ptrMap[3]);
-  regNum = ptrMap[3];
-  for (int i = 0; i < ptrMap[3]; i++) {
-    fprintf(stderr, ">reg[%d]: 0x%x\n", i, ptrMap[i + 4]);
-  }
-  fprintf(stderr, ">stackPointerNum: %d\n", ptrMap[4 + regNum]);
-  inStackNum = ptrMap[4 + regNum];
-  for (int i = 0; i < inStackNum; i++) {
-    fprintf(stderr, ">frame[-%d]: 0x%x\n", ptrMap[4 + regNum + 1 + i],
-            *(frame - ptrMap[4 + regNum + 1 + i]));
-  }
-  fprintf(stderr, "----------\n");
-}
-
 int *initArray(int size, int init, struct string *s, uint32 ptrMap) {
   int i;
   GC_info(ptrMap);
-  fprintf(stderr, ">initArray: size: %d, init: 0x%x, descriptor: %s\n", size,
-          init, s->chars);
-  int *a = (int *) malloc((size + 1) * sizeof(int));
+  debug("initArray: size: %d, init: 0x%x, descriptor: %s(%p))\n", size, init,
+        s->chars, s);
+  int *a = (int *) GC_alloc((size + 2) * sizeof(int), ptrMap);
   s->length = size;
   a[0] = (uint64) s;
-  fprintf(stderr, ">initArray: a[0]: 0x%x\n", a[0]);
-  if ((uint64) a >= UINT_MAX) {
-    fprintf(stderr, ">initArray: UINT_MAX exceeded\n");
-    exit(1);
-  }
   for (i = 1; i <= size; i++)
     a[i] = init;
-  fprintf(stderr, ">initArray: alloced memory from %p to %p\n", a, &a[size]);
+  a[size + 1] = 0; // special forwarding pointer
+  debug("initArray: alloced memory from %p to %p\n", a, &a[size]);
   return a;
 }
 
@@ -56,17 +27,13 @@ int *initRecord(struct string *s, uint32 ptrMap) {
   int i;
   int *p, *a;
   GC_info(ptrMap);
-  p = a = (int *) malloc(sizeof(int) * (s->length + 1));
-  // int is 32-bit
-  if ((uint64) s->chars >= UINT_MAX || (uint64) p >= UINT_MAX) {
-    fprintf(stderr, ">initRecord: UINT_MAX exceeded\n");
-    exit(1);
-  }
-  *p++ = (uint64) s->chars;
-  fprintf(stderr, ">InitRecord: record descriptor: %s\n", s->chars);
-  for (i = 1; i <= s->length; i += sizeof(int))
+  p = a = (int *) GC_alloc(sizeof(int) * (s->length + 2), ptrMap);
+  *p++ = (uint64) s;
+  debug("InitRecord: record descriptor at %p: %s\n", s, s->chars);
+  for (i = 1; i <= s->length; i++)
     *p++ = 0;
-  fprintf(stderr, ">initRecord: allocated memory from %p to %p\n", a, p);
+  *p++ = 0; // special forwarding pointer
+  debug("initRecord: allocated memory from %p to %p\n", a, p);
   return a;
 }
 
@@ -184,8 +151,9 @@ int main() {
   uint64 fp, sp;
   asm volatile("mv %0, fp" : "=r"(fp));
   asm volatile("mv %0, sp" : "=r"(sp));
-  fprintf(stderr, ">before fp: %lx sp: %lx\n", fp, sp);
+  debug("before fp: %lx sp: %lx\n", fp, sp);
+  GC_init();
   _start();
-  fprintf(stderr, ">after fp: %lx sp: %lx\n", fp, sp);
+  debug("after fp: %lx sp: %lx\n", fp, sp);
   return 3;
 }

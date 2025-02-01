@@ -116,10 +116,15 @@ $U/_forktest: $U/forktest.o $(ULIB)
 mkfs/mkfs: mkfs/mkfs.c $K/fs.h $K/param.h
 	gcc -Werror -Wall -I. -o mkfs/mkfs mkfs/mkfs.c
 
-$U/_runtime: $U/runtime.c $(ULIB) $U/tiger.s
+$U/tiger_gc.o: $U/tiger/tiger_gc.c
+	$(CC) $(CFLAGS) -I. -Ikernel -c -o $U/set.o $U/tiger/set.c
+	$(CC) $(CFLAGS) -I. -Ikernel -c -o $U/tabel.o $U/tiger/table.c
+	$(CC) $(CFLAGS) -I. -Ikernel -c -o $U/tiger_gc.o $U/tiger/tiger_gc.c
+
+$U/_runtime: $U/runtime.c $U/tiger_gc.o $(ULIB) $U/tiger.s
 	$(CC) $(CFLAGS) -c $U/tiger.s -o $U/tiger.o
 	$(CC) $(CFLAGS) -I. -Ikernel -c -o $U/runtime.o $U/runtime.c
-	$(LD) $(LDFLAGS) -T $U/user.ld -o $U/_runtime $U/runtime.o $U/tiger.o $(ULIB)
+	$(LD) $(LDFLAGS) -T $U/user.ld -o $U/_runtime $U/runtime.o $U/tiger.o $U/tiger_gc.o $U/set.o $(ULIB)
 	$(OBJDUMP) -S -s -j .data $U/_runtime > $U/runtime_data.asm
 	$(OBJDUMP) -S $U/_runtime > $U/runtime.asm
 	# $(OBJCOPY) -S -O binary $U/_runtime.out $U/_runtime
